@@ -1,0 +1,20 @@
+{
+  "name": "maxim-mazurok/vidcolla",
+  "description": "Synchronous video viewing",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Maxim Mazurok",
+      "email": "maxim@mazurok.com"
+    }
+  ],
+  "require": {
+    "cboden/ratchet": "^0.3.6"
+  },
+  "autoload": {
+    "psr-0": {
+      "MyApp": "src"
+    }
+  }
+}

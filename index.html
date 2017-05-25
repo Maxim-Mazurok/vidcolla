@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<body>
+<!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
+<div id="player"></div>
+
+<script>
+    var tag = document.createElement('script');
+
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    var player;
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            height: '390',
+            width: '640',
+            videoId: 'M7lc1UVf-VE',
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onPlaybackRateChange': onPlayerPlaybackRateChange
+            },
+            playerVars: {
+                color: 'red',
+                rel: 0,
+                start: 0
+            }
+        });
+    }
+
+    function onPlayerPlaybackRateChange(event) {
+        /*
+         playback speed changed
+         event.target.getAvailablePlaybackRates();
+         event.target.getPlaybackRate();
+         event.target.setPlaybackRate();
+         */
+        conn.send(JSON.stringify({
+            type: 'PlayerPlaybackRateChange',
+            PlaybackRate: event.target.getPlaybackRate()
+        }));
+    }
+
+    function onPlayerReady(event) {
+        //event.target.seekTo(0, true);
+        event.target.playVideo();
+    }
+
+    var done = false;
+    function onPlayerStateChange(event) {
+        conn.send(JSON.stringify({
+            type: 'PlayerStateChange',
+            PlayerState: event.data,
+            CurrentTime: event.target.getCurrentTime()
+        }));
+
+        var state = null;
+        switch (event.data) {
+            case YT.PlayerState.UNSTARTED:
+                state = -1;
+                break;
+            case YT.PlayerState.ENDED:
+                state = 0;
+                break;
+            case YT.PlayerState.PLAYING:
+                state = 1;
+                break;
+            case YT.PlayerState.PAUSED:
+                state = 2;
+                break;
+            case YT.PlayerState.BUFFERING:
+                state = 3;
+                break;
+            case YT.PlayerState.CUED:
+                state = 5;
+                break;
+            default:
+                state = null;
+                break;
+        }
+        console.log(state);
+        /*if (event.data === YT.PlayerState.PLAYING && !done) {
+         //setTimeout(stopVideo, 6000);
+         //event.target.seekTo(0, true);
+         done = true;
+         }*/
+    }
+    function playVideo() {
+        player.playVideo();
+    }
+    function pauseVideo() {
+        player.pauseVideo();
+    }
+    function stopVideo() {
+        player.stopVideo();
+    }
+</script>
+<script>
+    /*var connection = new WebSocket('ws://127.0.0.1:9000');
+
+     connection.onopen = function () {
+     connection.send('Ping');
+     };
+     connection.onmessage = function (msg) {
+     console.log('msg: ' + msg);
+     };*/
+    var conn = new WebSocket('ws://localhost:9000/chat');
+    conn.onmessage = function (e) {
+        var data = JSON.parse(e.data);
+
+        switch (data.type) {
+            case 'PlayerStateChange':
+                switch (parseInt(data.PlayerState)) {
+                    case YT.PlayerState.PAUSED:
+                        console.log('pause');
+                        if (player.getPlayerState() !== YT.PlayerState.PAUSED) {
+                            player.pauseVideo();
+                        }
+                        break;
+                    case YT.PlayerState.PLAYING:
+                        console.log('play');
+                        if (parseInt(player.getCurrentTime()) !== parseInt(data.CurrentTime)) {
+                            console.log(parseInt(player.getCurrentTime()) + ' !== ' + parseInt(data.CurrentTime));
+                            player.seekTo(data.CurrentTime, true);
+                        }
+                        if (player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                            player.playVideo();
+                        }
+                        break;
+                    case YT.PlayerState.BUFFERING:
+                        console.log('buffering');
+                        if (parseInt(player.getCurrentTime()) !== parseInt(data.CurrentTime)) {
+                            console.log(parseInt(player.getCurrentTime()) + ' !== ' + parseInt(data.CurrentTime));
+                            player.seekTo(data.CurrentTime, true);
+                        }
+                        break;
+                    default:
+                        console.error('unknown player state code: ' + data.PlayerState);
+                        break;
+                }
+                break;
+            case 'PlayerPlaybackRateChange':
+                player.setPlaybackRate(data.PlaybackRate);
+                break;
+            default:
+                console.error('unknown data type: ' + data.type);
+                break;
+        }
+    };
+    conn.onopen = function (e) {
+        //conn.send('Hello Me!');
+    };
+</script>
+</body>
+</html>
